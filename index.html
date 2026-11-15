@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mesa de taller · prototipo</title>
+<style>
+  html,body{margin:0;height:100%;background:#15181a;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#e8e8e4;overflow:hidden}
+  #stage{position:fixed;inset:0}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .hud{position:fixed;left:16px;top:14px;display:flex;gap:8px;align-items:center;z-index:5}
+  .hud h1{font-size:14px;margin:0 10px 0 0;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  button{font:inherit;font-size:13px;background:#22262a;color:#e8e8e4;border:1px solid #3d4448;border-radius:8px;padding:7px 11px;cursor:pointer}
+  button:hover{border-color:#7fe3ff}
+  button.on{background:#7fe3ff;color:#0b1113;border-color:#7fe3ff}
+  #hint{position:fixed;left:16px;bottom:14px;font-size:12px;opacity:.7;z-index:5;max-width:90vw}
+  #tip{position:fixed;pointer-events:none;background:#0b0d0ef2;border:1px solid #7fe3ff;padding:4px 8px;border-radius:6px;font-size:12px;display:none;z-index:6;white-space:nowrap}
+  #err{position:fixed;left:16px;top:60px;z-index:9;background:#4a1010;color:#fff;padding:8px 10px;font-size:12px;max-width:80vw;border-radius:6px}
+  #panel{position:fixed;right:18px;top:64px;width:min(430px,42vw);max-height:calc(100vh - 110px);overflow:auto;padding:16px;box-sizing:border-box;border-radius:12px;z-index:4;
+         background:radial-gradient(circle at 30% 20%,#9c7c52,#7a5c39 70%);box-shadow:0 14px 40px rgba(0,0,0,.5)}
+  #panel[hidden]{display:none}
+  #panel h2{margin:0;font-size:20px;color:#fff6e0}
+  #panel .tag{color:#f1e3c4;font-size:13px;margin:2px 0 12px}
+  .postit{position:relative;background:#f7e26b;color:#222;padding:12px 14px;margin:0 0 14px;box-shadow:0 6px 12px rgba(0,0,0,.35);font-size:13px;line-height:1.45;transform:rotate(-1deg)}
+  .postit:nth-of-type(2n){background:#f9b6c2;transform:rotate(1.1deg)}
+  .postit:nth-of-type(3n){background:#a9d8f5;transform:rotate(-.6deg)}
+  .postit h3{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+  .postit ul{margin:0;padding-left:18px}
+  .pend{font-style:italic;color:#4b4b4b}
+  .photos{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 14px}
+  .photo{height:110px;border:2px dashed #fff3d6aa;display:flex;align-items:center;justify-content:center;color:#fff3d6;font-size:12px;background:#00000026;text-align:center;padding:6px}
+  .links a{display:inline-block;margin:3px 6px 3px 0;color:#1a2a30;background:#ffffffd9;padding:5px 9px;border-radius:5px;text-decoration:none;font-size:12px}
+  #closeP{float:right;margin:0 0 8px 8px}
+  @media (max-width:700px){#panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:52vh}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div class="hud">
+  <h1>Mesa de taller</h1>
+  <button id="reset">Recoger piezas</button>
+  <button id="lupa" title="Modo lupa: un clic inspecciona la pieza">Lupa</button>
+</div>
+<div id="hint">Arrastra y lanza las piezas · Doble clic o suéltala en la zona de inspección para ver su proyecto · Lupa: un clic basta</div>
+<div id="tip"></div>
+<div id="err" hidden></div>
+<div id="panel" hidden></div>
+
+<!-- Librerías clásicas (sin módulos ni importmap) para que carguen en cualquier visor -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+<script>
+  window.addEventListener('error', function (e) {
+    var d = document.getElementById('err');
+    d.hidden = false;
+    d.textContent = 'Error: ' + e.message + ' (línea ' + e.lineno + ')';
+  });
+</script>
+
+<script>
+/* ---------- Contenido (borrador en contenido_piezas.md) ---------- */
+var PROJECTS = {
+  broto: {
+    name: 'Broto', tag: 'Autocultivo doméstico con hidroponía',
+    postits: [
+      { h: 'Qué es', t: 'Sistema de autocultivo doméstico con iluminación LED inteligente ajustable en altura y ciclos de luz configurables desde la app.' },
+      { h: 'Datos clave', list: ['PVP estimado: 70 € (coste industrial 35 €, sin IVA)', 'Fabricado con materiales de escritorio biobasados', 'Hito: MVP en el segundo trimestre de 2026'] }
+    ],
+    links: [{ label: 'Documentación del proyecto', url: null }]
+  },
+  deco: {
+    name: 'DECO', tag: 'Cultivo modular de setas y plantas',
+    postits: [
+      { h: 'Qué es', t: 'Sistema constructivo modular para cultivo doméstico. Se apilan cubos de 250 mm que se conectan magnéticamente con pogo-pins.' },
+      { h: 'Módulos', list: ['Eco-Core: depósito de agua, bomba y CPU', 'Fungi-Pod: cámara oscura con control de humedad para setas', 'Green-Pod: módulo abierto o semicerrado con LED cenital'] },
+      { h: 'Datos del pitch', list: ['PVP estimado: 250 € (coste industrial 95 €, sin IVA)', 'Automatización desde app web y reutilización de CO₂', 'Hito: validación de DECO y web app en el segundo trimestre de 2027'] }
+    ],
+    links: [{ label: 'Pitch deck', url: null }]
+  },
+  viento: {
+    name: 'VIENTO', tag: 'Patines eléctricos en línea (TFG)',
+    postits: [
+      { h: 'Qué es', t: 'Diseño y prototipado de unos patines eléctricos en línea (e-rollerblades). Trabajo de Fin de Grado en Ingeniería Eléctrica, Universidad de Valladolid, julio de 2023.' },
+      { h: 'Tecnología', list: ['Motor BLDC y controlador VESC', 'Baterías LiPo y Li-ion', 'Impresión 3D y diseño en Fusion 360'] }
+    ],
+    links: [{ label: 'TFG', url: null }]
+  }
+};
+
+var PIECES = [
+  { file: 'assets/broto_bandeja.json', project: 'broto', name: 'Bandeja recta',
+    fn: 'Bandeja del sistema de autocultivo Broto.', util: null },
+  { file: 'assets/deco_fog.json', project: 'deco', name: 'Generador de niebla',
+    fn: 'Generador de niebla de DECO por ultrasonidos.', util: null },
+  { file: 'assets/viento_motor_mount.json', project: 'viento', name: 'Chasis del motor',
+    fn: 'Chasis o frame que sujeta el motor BLDC de los patines. Impreso en 3D; el TFG lo plantea también en aluminio.', util: null }
+];
+
+var MAT_W = 1000, MAT_D = 650;                 // mm
+var ZONE = { x: -270, z: 0, w: 300, d: 220 };  // zona de inspección
+
+/* ---------- Escena ---------- */
+var stage = document.getElementById('stage');
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+stage.appendChild(renderer.domElement);
+var canvas = renderer.domElement;
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x15181a);
+var camera = new THREE.PerspectiveCamera(38, 1, 10, 6000);
+camera.position.set(-40, 1100, 620);
+camera.lookAt(-40, 0, 0);
+
+function resize() {
+  var w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x202428, 1.0));
+var sun = new THREE.DirectionalLight(0xffffff, 1.7);
+sun.position.set(-300, 900, 400);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -700; sun.shadow.camera.right = 700;
+sun.shadow.camera.top = 700; sun.shadow.camera.bottom = -700;
+sun.shadow.camera.near = 10; sun.shadow.camera.far = 2600;
+sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+
+/* ---------- Plancha de corte (textura dibujada) ---------- */
+function drawMat() {
+  var W = 2000, H = 1300, px = 2;              // 2 px por mm
+  var c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  var g = c.getContext('2d');
+  g.fillStyle = '#0e1112'; g.fillRect(0, 0, W, H);
+  for (var i = 0; i < 12000; i++) {
+    g.fillStyle = 'rgba(255,255,255,' + (Math.random() * 0.025) + ')';
+    g.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+  }
+  g.lineWidth = 1;
+  var x, y;
+  for (x = 0; x <= MAT_W; x += 10) {
+    g.strokeStyle = x % 50 === 0 ? 'rgba(235,240,240,.7)' : 'rgba(235,240,240,.2)';
+    g.beginPath(); g.moveTo(x * px, 0); g.lineTo(x * px, H); g.stroke();
+  }
+  for (y = 0; y <= MAT_D; y += 10) {
+    g.strokeStyle = y % 50 === 0 ? 'rgba(235,240,240,.7)' : 'rgba(235,240,240,.2)';
+    g.beginPath(); g.moveTo(0, y * px); g.lineTo(W, y * px); g.stroke();
+  }
+  g.strokeStyle = 'rgba(235,240,240,.45)';
+  [15, 30, 45, 60, 75].forEach(function (a) {
+    var r = a * Math.PI / 180;
+    g.beginPath(); g.moveTo(0, H);
+    g.lineTo(3000 * Math.cos(r), H - 3000 * Math.sin(r)); g.stroke();
+  });
+  g.beginPath(); g.arc(0, H, 240, -Math.PI / 2, 0); g.stroke();
+  g.beginPath(); g.arc(0, H, 150, -Math.PI / 2, 0); g.stroke();
+  g.fillStyle = 'rgba(235,240,240,.85)'; g.font = '18px monospace';
+  for (x = 0; x <= MAT_W; x += 50) g.fillText(String(x), x * px + 3, 22);
+  for (y = 50; y <= MAT_D; y += 50) g.fillText(String(y), 4, y * px + 6);
+  var zx = (ZONE.x - ZONE.w / 2 + MAT_W / 2) * px, zw = ZONE.w * px;
+  var zy = (ZONE.z - ZONE.d / 2 + MAT_D / 2) * px, zh = ZONE.d * px;
+  g.setLineDash([14, 10]); g.strokeStyle = 'rgba(127,227,255,.8)'; g.lineWidth = 2;
+  g.strokeRect(zx, zy, zw, zh); g.setLineDash([]);
+  g.fillStyle = 'rgba(127,227,255,.85)'; g.font = '20px monospace';
+  g.fillText('ZONA DE INSPECCIÓN', zx + 10, zy - 10);
+  return c;
+}
+var matTex = new THREE.CanvasTexture(drawMat());
+matTex.encoding = THREE.sRGBEncoding;
+var matGeo = new THREE.PlaneGeometry(MAT_W, MAT_D);
+matGeo.rotateX(-Math.PI / 2);
+var matMesh = new THREE.Mesh(matGeo, new THREE.MeshStandardMaterial({ map: matTex, roughness: 0.9, metalness: 0 }));
+matMesh.receiveShadow = true;
+scene.add(matMesh);
+
+/* ---------- Física (cannon.js 0.6, unidades en mm) ---------- */
+var world = new CANNON.World();
+world.gravity.set(0, -9820, 0);
+world.allowSleep = true;
+world.defaultContactMaterial.friction = 0.45;
+world.defaultContactMaterial.restitution = 0.2;
+
+var floor = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+world.addBody(floor);
+function wall(x, z, hx, hz) {
+  var b = new CANNON.Body({ mass: 0, shape: new CANNON.Box(new CANNON.Vec3(hx, 200, hz)) });
+  b.position.set(x, 200, z);
+  world.addBody(b);
+}
+wall(-MAT_W / 2 - 10, 0, 10, MAT_D / 2);
+wall(MAT_W / 2 + 10, 0, 10, MAT_D / 2);
+wall(0, -MAT_D / 2 - 10, MAT_W / 2, 10);
+wall(0, MAT_D / 2 + 10, MAT_W / 2, 10);
+
+/* ---------- Piezas ---------- */
+var pieces = [];
+var edgeCol = 0x0c0d0e, edgeHover = 0x7fe3ff;
+
+function addPiece(def, geo) {
+  geo.computeBoundingBox();
+  var bb = geo.boundingBox;
+  var size = bb.getSize(new THREE.Vector3());
+  var c = bb.getCenter(new THREE.Vector3());
+  geo.translate(-c.x, -c.y, -c.z);
+  geo.computeVertexNormals();
+
+  var mat = new THREE.MeshStandardMaterial({ color: 0xd9d8d2, roughness: 0.75, metalness: 0 });
+  var mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  var edgeMat = new THREE.LineBasicMaterial({ color: edgeCol });
+  mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat));
+  scene.add(mesh);
+
+  var body = new CANNON.Body({
+    mass: 1,
+    shape: new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2)),
+    linearDamping: 0.15, angularDamping: 0.35
+  });
+  world.addBody(body);
+
+  var p = { def: def, mesh: mesh, mat: mat, edgeMat: edgeMat, body: body, size: size, mode: 'free', hover: false, anim: null };
+  pieces.push(p);
+  spawn(p, pieces.length - 1);
+}
+
+function spawn(p, i) {
+  p.body.type = CANNON.Body.DYNAMIC;
+  p.body.updateMassProperties();
+  p.body.position.set(-60 + Math.random() * 380, 200 + i * 150, -150 + Math.random() * 300);
+  p.body.quaternion.setFromEuler(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+  p.body.velocity.set(0, 0, 0);
+  p.body.angularVelocity.set(0, 0, 0);
+  p.body.wakeUp();
+  p.mode = 'free';
+}
+
+var stlLoader = new THREE.STLLoader();
+PIECES.forEach(function (def) {
+  fetch(def.file)
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var bin = Uint8Array.from(atob(j.b64), function (ch) { return ch.charCodeAt(0); }).buffer;
+      addPiece(def, stlLoader.parse(bin));
+    })
+    .catch(function (err) {
+      var d = document.getElementById('err');
+      d.hidden = false;
+      d.textContent = 'No se pudo cargar ' + def.file + ': ' + err;
+    });
+});
+
+/* ---------- Interacción ---------- */
+var ray = new THREE.Raycaster();
+var ndc = new THREE.Vector2();
+var groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+var hitPt = new THREE.Vector3();
+var tip = document.getElementById('tip');
+var panel = document.getElementById('panel');
+var lupaBtn = document.getElementById('lupa');
+var lupa = false;
+var current = null;
+var drag = null;
+var lastClick = { id: null, t: 0 };
+
+function setRay(e) {
+  var r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+}
+function pick(e) {
+  setRay(e);
+  var hits = ray.intersectObjects(pieces.map(function (p) { return p.mesh; }), false);
+  if (!hits.length) return null;
+  for (var i = 0; i < pieces.length; i++) if (pieces[i].mesh === hits[0].object) return pieces[i];
+  return null;
+}
+function groundAt(e, y) {
+  setRay(e);
+  groundPlane.constant = -y;
+  return ray.ray.intersectPlane(groundPlane, hitPt) ? hitPt.clone() : null;
+}
+function inZone(x, z) {
+  return Math.abs(x - ZONE.x) < ZONE.w / 2 && Math.abs(z - ZONE.z) < ZONE.d / 2;
+}
+function setHover(p, on) {
+  p.hover = on;
+  p.edgeMat.color.set(on ? edgeHover : edgeCol);
+  p.mat.emissive.set(on ? 0x0a2a33 : 0x000000);
+}
+
+canvas.addEventListener('pointerdown', function (e) {
+  var p = pick(e);
+  if (!p || p.mode === 'anim') return;
+  var y = p.body.position.y + 30;
+  var g = groundAt(e, y);
+  if (!g) return;
+  drag = {
+    p: p, startX: e.clientX, startY: e.clientY, moved: false, y: y,
+    offset: new THREE.Vector3(p.body.position.x - g.x, 0, p.body.position.z - g.z),
+    hist: []
+  };
+  p.body.type = CANNON.Body.KINEMATIC;
+  p.body.updateMassProperties();
+  p.body.velocity.set(0, 0, 0);
+  p.body.angularVelocity.set(0, 0, 0);
+  p.mode = 'drag';
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+  tip.style.display = 'none';
+});
+
+canvas.addEventListener('pointermove', function (e) {
+  if (drag) {
+    var dx = e.clientX - drag.startX, dy = e.clientY - drag.startY;
+    if (!drag.moved && Math.sqrt(dx * dx + dy * dy) > 6) drag.moved = true;
+    var g = groundAt(e, drag.y);
+    if (!g) return;
+    var x = g.x + drag.offset.x, z = g.z + drag.offset.z;
+    drag.p.body.position.set(x, drag.y, z);
+    drag.hist.push({ x: x, z: z, t: performance.now() });
+    if (drag.hist.length > 12) drag.hist.shift();
+    return;
+  }
+  var p = pick(e);
+  pieces.forEach(function (q) { if (q !== p && q.hover) setHover(q, false); });
+  if (p) {
+    if (!p.hover) setHover(p, true);
+    canvas.style.cursor = 'grab';
+    tip.textContent = p.def.name + ' · ' + PROJECTS[p.def.project].name;
+    tip.style.display = 'block';
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+  } else {
+    canvas.style.cursor = 'default';
+    tip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('pointerup', function (e) {
+  if (!drag) return;
+  var p = drag.p, moved = drag.moved, hist = drag.hist;
+  drag = null;
+  canvas.style.cursor = 'grab';
+  var now = performance.now();
+
+  if (!moved) {
+    var dbl = lastClick.id === p.def.id && now - lastClick.t < 450;
+    if (lupa || dbl) { inspect(p); lastClick = { id: null, t: 0 }; return; }
+    lastClick = { id: p.def.id, t: now };
+    release(p);
+    return;
+  }
+
+  if (inZone(p.body.position.x, p.body.position.z)) { inspect(p); return; }
+
+  var recent = hist.filter(function (h) { return now - h.t < 120; });
+  var vx = 0, vz = 0;
+  if (recent.length >= 2) {
+    var a = recent[0], b = recent[recent.length - 1];
+    var dt = Math.max(0.016, (b.t - a.t) / 1000);
+    vx = Math.max(-1400, Math.min(1400, (b.x - a.x) / dt));
+    vz = Math.max(-1400, Math.min(1400, (b.z - a.z) / dt));
+  }
+  release(p);
+  p.body.velocity.set(vx, 0, vz);
+  p.body.angularVelocity.set((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+});
+
+lupaBtn.addEventListener('click', function () {
+  lupa = !lupa;
+  lupaBtn.classList.toggle('on', lupa);
+});
+
+document.getElementById('reset').addEventListener('click', function () {
+  if (current) closePanel();
+  pieces.forEach(function (p, i) { spawn(p, i); });
+});
+
+/* ---------- Inspección ---------- */
+function release(p) {
+  if (current === p) { current = null; panel.hidden = true; }
+  if (p.mode === 'free' && p.body.type === CANNON.Body.DYNAMIC) return;
+  p.body.type = CANNON.Body.DYNAMIC;
+  p.body.updateMassProperties();
+  p.body.wakeUp();
+  p.mode = 'free';
+}
+
+function inspect(p) {
+  if (current && current !== p) release(current);
+  current = p;
+  p.mode = 'anim';
+  p.body.type = CANNON.Body.KINEMATIC;
+  p.body.updateMassProperties();
+  p.body.velocity.set(0, 0, 0);
+  p.body.angularVelocity.set(0, 0, 0);
+  p.anim = {
+    from: new THREE.Vector3(p.body.position.x, p.body.position.y, p.body.position.z),
+    fromQ: new THREE.Quaternion(p.body.quaternion.x, p.body.quaternion.y, p.body.quaternion.z, p.body.quaternion.w),
+    to: new THREE.Vector3(ZONE.x, p.size.y / 2, ZONE.z),
+    t0: performance.now(), dur: 650
+  };
+  showPanel(p);
+}
+
+function closePanel() {
+  if (current) release(current);
+  current = null;
+  panel.hidden = true;
+}
+
+function showPanel(p) {
+  var pr = PROJECTS[p.def.project];
+  var pend = function (t) { return '<span class="pend">' + t + '</span>'; };
+  var pieceUtil = p.def.util ? p.def.util : pend('Pendiente: describe su papel dentro del conjunto.');
+  var projectPostits = pr.postits.map(function (s) {
+    var body = s.t ? '<div>' + s.t + '</div>' : '<ul>' + s.list.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
+    return '<div class="postit"><h3>' + s.h + '</h3>' + body + '</div>';
+  }).join('');
+  var links = pr.links.map(function (l) {
+    return l.url
+      ? '<a href="' + l.url + '" target="_blank" rel="noopener">' + l.label + '</a>'
+      : pend(l.label + ': enlace pendiente');
+  }).join(' ');
+
+  panel.innerHTML =
+    '<button id="closeP">Devolver a la mesa</button>' +
+    '<h2>' + pr.name + '</h2>' +
+    '<div class="tag">' + pr.tag + '</div>' +
+    '<div class="postit"><h3>Pieza: ' + p.def.name + '</h3><div>' + p.def.fn + '</div><div style="margin-top:6px">' + pieceUtil + '</div></div>' +
+    '<div class="photos"><div class="photo">Foto de la pieza (pendiente)</div><div class="photo">Foto del proyecto (pendiente)</div></div>' +
+    projectPostits +
+    '<div class="postit"><h3>Enlaces</h3><div class="links">' + links + '</div></div>';
+  panel.hidden = false;
+  document.getElementById('closeP').addEventListener('click', closePanel);
+}
+
+/* ---------- Bucle ---------- */
+var last = performance.now();
+var qTmp = new THREE.Quaternion(), qId = new THREE.Quaternion();
+function frame(now) {
+  var dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  pieces.forEach(function (p) {
+    if (p.mode === 'anim' && p.anim) {
+      var a = p.anim;
+      var t = Math.min(1, (now - a.t0) / a.dur);
+      var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      p.body.position.set(
+        a.from.x + (a.to.x - a.from.x) * e,
+        a.from.y + (a.to.y - a.from.y) * e + Math.sin(Math.PI * e) * 120,
+        a.from.z + (a.to.z - a.from.z) * e);
+      qTmp.copy(a.fromQ).slerp(qId, e);
+      p.body.quaternion.set(qTmp.x, qTmp.y, qTmp.z, qTmp.w);
+      if (t >= 1) { p.mode = 'inspect'; p.anim = null; }
+    }
+  });
+
+  world.step(1 / 60, dt, 3);
+
+  pieces.forEach(function (p) {
+    p.mesh.position.set(p.body.position.x, p.body.position.y, p.body.position.z);
+    var q = p.body.quaternion;
+    p.mesh.quaternion.set(q.x, q.y, q.z, q.w);
+  });
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
