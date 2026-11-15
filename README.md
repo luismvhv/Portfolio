@@ -1,21 +1,22 @@
-# Mesa de taller · portfolio
+# Luis Martínez · Artefactos
 
-Prototipo de portfolio en forma de mesa de corte. Las piezas 3D (STL simplificados) caen y se pueden lanzar sobre una plancha negra. Al inspeccionar una pieza aparecen postits con su proyecto.
+Portfolio en forma de tapete de corte visto desde arriba. Las piezas 3D (STL simplificados) caen sobre el tapete, chocan entre ellas y se pueden arrastrar y lanzar. Cada proyecto tiene su zona en el tapete con postits y polaroids.
 
-## Estado
-- `index.html`: prototipo independiente (three.js r128, cannon.js 0.6.2, sin build).
-- `assets/*.json`: STL en base64 (el visor no sirve .stl). Origen: `Bandeja_Recta`, `BladelessFogImpulse_V2`, `Motor_Mount`.
+## Estructura
+- **Preloader**: "Luis Martínez" (manuscrita) y "ARTEFACTOS" (efecto máquina de escribir) sobre el tapete mientras cargan los STL (porcentaje abajo a la derecha). Cuando termina, las piezas caen desde la cámara, atraviesan el título y este se desvanece. Esc lo salta.
+- **Tapete** (HTML/CSS, 2D): cuadrícula de 10/50 mm con desgaste, numeración en cm en los bordes, reglas, transportador y arañazos. Se recorre arrastrándolo (con inercia) y con la rueda o pellizco para el zoom; la cámara no pasa de los bordes.
+- **Piezas** (three.js + cannon.js, encima del tapete con fondo transparente): al arrastrarlas se empujan con velocidad, así que chocan y ruedan sin montarse unas sobre otras.
+- **Zonas de proyecto** (Broto, DECO, VIENTO y Contacto) en las esquinas del tapete. Doble clic en una pieza (o un clic con Lupa, o soltarla en su base) la lleva a su zona y la cámara la acompaña.
+- **Margen izquierdo**: título, bio, listado de proyectos, contacto y pedir información.
+
+## Archivos
+- `index.html`: todo el prototipo (sin build).
+- `assets/*.json`: STL en base64 (el visor no sirve .stl).
 - `contenido_piezas.md`: textos de postits y dudas pendientes.
 
-## Estructura de la página
-- **Entrada**: título centrado "Luis Martínez" (manuscrita, se escribe de izquierda a derecha) y debajo "ARTEFACTOS" tecleado con cursor. Al terminar, las piezas caen sobre la plancha; cuando una cruza el título, este se desvanece (Esc lo salta).
-- **Margen izquierdo**: aparece tras la entrada. Título, bio breve, listado de proyectos (abre el panel de cada uno), contacto y pedir información.
-
 ## Pendiente
-- Sustituir la tipografía manuscrita provisional (Homemade Apple) por la del componente de Framer.
-- Rellenar `CONTACT` (email, LinkedIn) en `index.html` y revisar la bio del margen.
+- Sustituir la manuscrita provisional (Homemade Apple) por la del componente de Framer.
+- Fotos de cada proyecto: rellenar `photos[].src` en `PROJECTS` (por ejemplo `assets/fotos/broto_1.jpg`).
+- Rellenar `CONTACT` (email, LinkedIn) y revisar la bio.
 - Confirmar textos y enlaces (Bambu Lab, MakerWorld, TFG, TFM).
-- Fotos de piezas y proyectos.
-- Verificar visualmente la escena (la primera versión se vio en negro en un visor).
 - Portar a un componente de código de Framer.
-- Generar mallas más ligeras si el rendimiento en móvil no basta.
