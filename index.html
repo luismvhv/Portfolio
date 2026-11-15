@@ -3,17 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mesa de taller · prototipo</title>
+<title>Luis Martínez · Artefactos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Provisional: sustituir por la tipografía manuscrita del componente de Framer -->
+<link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;background:#15181a;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#e8e8e4;overflow:hidden}
-  #stage{position:fixed;inset:0}
+  :root{--side:340px;--bg:#15181a;--ink:#e8e8e4;--muted:#9aa09f;--line:#2c3236;--accent:#7fe3ff;
+        --hand:"Homemade Apple",cursive;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+  html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);overflow:hidden}
+  #stage{position:fixed;top:0;bottom:0;right:0;left:0;transition:left .9s cubic-bezier(.6,0,.2,1)}
+  body.ready #stage{left:var(--side)}
+
+  /* ---------- Título de entrada ---------- */
+  #intro{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3;pointer-events:none;
+         transition:opacity .9s ease,filter .9s ease,transform .9s ease}
+  #intro.gone{opacity:0;filter:blur(14px);transform:translateY(-18px) scale(1.04)}
+  #intro .name{font-family:var(--hand);font-size:clamp(40px,7vw,96px);line-height:1.5;padding:.1em .3em .45em;
+               clip-path:inset(0 100% 0 0);animation:write 1.6s cubic-bezier(.55,.1,.35,1) .3s forwards}
+  #intro .sub{font-family:var(--mono);font-size:clamp(14px,1.6vw,20px);letter-spacing:.42em;margin-top:6px;min-height:1.4em}
+  .cursor{display:inline-block;width:.6em;height:1.1em;margin-left:.1em;vertical-align:-.18em;background:currentColor;animation:blink 1s steps(1) infinite}
+  @keyframes write{to{clip-path:inset(0 0 0 0)}}
+  @keyframes blink{50%{opacity:0}}
+
+  /* ---------- Margen izquierdo ---------- */
+  #side{position:fixed;left:0;top:0;bottom:0;width:var(--side);box-sizing:border-box;padding:36px 30px 26px;z-index:5;
+        display:flex;flex-direction:column;gap:22px;border-right:1px solid var(--line);background:var(--bg);
+        transform:translateX(-100%);transition:transform .9s cubic-bezier(.6,0,.2,1)}
+  body.ready #side{transform:none}
+  #side .name{font-family:var(--hand);font-size:30px;line-height:1.6;margin:0;padding-bottom:.25em;font-weight:400}
+  #side .sub{font-family:var(--mono);font-size:12px;letter-spacing:.42em;margin-top:-10px}
+  #side p{margin:0;font-size:14px;line-height:1.6;color:#c9ccca}
+  #side nav{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+  #side nav button,#side nav a{all:unset;cursor:pointer;font-family:var(--mono);font-size:13px;padding:12px 0;border-bottom:1px solid var(--line);
+        display:flex;justify-content:space-between;color:var(--ink)}
+  #side nav button:hover,#side nav a:hover{color:var(--accent)}
+  #side nav .arr{opacity:.6}
+  #list{display:flex;flex-direction:column;gap:2px;margin-top:-10px}
+  #list[hidden]{display:none}
+  #side #list button{all:unset;display:block;cursor:pointer;padding:8px 0 8px 14px;font-size:13px;border-left:1px solid var(--line);color:#c9ccca}
+  #side #list button:hover{color:var(--accent);border-color:var(--accent)}
+  #list small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  #contact{font-size:13px;line-height:1.6;color:#c9ccca;margin-top:-10px}
+  #contact[hidden]{display:none}
+  #side .tools{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
+  #side .foot{font-family:var(--mono);font-size:11px;color:var(--muted)}
   canvas{display:block;width:100%;height:100%;touch-action:none}
-  .hud{position:fixed;left:16px;top:14px;display:flex;gap:8px;align-items:center;z-index:5}
-  .hud h1{font-size:14px;margin:0 10px 0 0;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
   button{font:inherit;font-size:13px;background:#22262a;color:#e8e8e4;border:1px solid #3d4448;border-radius:8px;padding:7px 11px;cursor:pointer}
   button:hover{border-color:#7fe3ff}
   button.on{background:#7fe3ff;color:#0b1113;border-color:#7fe3ff}
-  #hint{position:fixed;left:16px;bottom:14px;font-size:12px;opacity:.7;z-index:5;max-width:90vw}
+  #hint{position:fixed;left:calc(var(--side) + 18px);bottom:14px;font-size:12px;opacity:0;z-index:2;max-width:60vw;transition:opacity .6s .9s}
+  body.ready #hint{opacity:.7}
   #tip{position:fixed;pointer-events:none;background:#0b0d0ef2;border:1px solid #7fe3ff;padding:4px 8px;border-radius:6px;font-size:12px;display:none;z-index:6;white-space:nowrap}
   #err{position:fixed;left:16px;top:60px;z-index:9;background:#4a1010;color:#fff;padding:8px 10px;font-size:12px;max-width:80vw;border-radius:6px}
   #panel{position:fixed;right:18px;top:64px;width:min(430px,42vw);max-height:calc(100vh - 110px);overflow:auto;padding:16px;box-sizing:border-box;border-radius:12px;z-index:4;
@@ -31,21 +71,60 @@
   .photo{height:110px;border:2px dashed #fff3d6aa;display:flex;align-items:center;justify-content:center;color:#fff3d6;font-size:12px;background:#00000026;text-align:center;padding:6px}
   .links a{display:inline-block;margin:3px 6px 3px 0;color:#1a2a30;background:#ffffffd9;padding:5px 9px;border-radius:5px;text-decoration:none;font-size:12px}
   #closeP{float:right;margin:0 0 8px 8px}
-  @media (max-width:700px){#panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:52vh}}
+  @media (max-width:700px){
+    #panel{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:52vh}
+    body.ready #stage{left:0;top:var(--head,120px)}
+    #side{width:auto;right:0;bottom:auto;padding:16px 16px 12px;gap:10px;border-right:0;border-bottom:1px solid var(--line);transform:translateY(-100%);max-height:100vh;overflow:auto}
+    #side .name{font-size:22px} #side .foot,#side .tools{display:none}
+    #side p{font-size:12.5px;line-height:1.45}
+    #side nav{flex-direction:row;gap:14px;border-top:0} #side nav button,#side nav a{border:0;padding:4px 0;font-size:12px} #side nav .arr{display:none}
+    #hint{left:16px;max-width:90vw}
+  }
 </style>
 </head>
 <body>
 <div id="stage"></div>
-<div class="hud">
-  <h1>Mesa de taller</h1>
-  <button id="reset">Recoger piezas</button>
-  <button id="lupa" title="Modo lupa: un clic inspecciona la pieza">Lupa</button>
+<div id="intro" aria-hidden="true">
+  <div class="name">Luis Martínez</div>
+  <div class="sub"><span id="typed"></span><span class="cursor"></span></div>
 </div>
+<aside id="side">
+  <div>
+    <h1 class="name">Luis Martínez</h1>
+    <div class="sub">ARTEFACTOS<span class="cursor"></span></div>
+  </div>
+  <p>Ingeniero eléctrico y diseñador de producto. Diseño, prototipo e imprimo en 3D sistemas físicos: desde patines eléctricos hasta huertos domésticos automatizados.</p>
+  <nav>
+    <button id="navList">Proyectos <span class="arr">↓</span></button>
+    <div id="list" hidden></div>
+    <button id="navContact">Contacto <span class="arr">→</span></button>
+    <div id="contact" hidden></div>
+    <button id="navInfo">Pedir información <span class="arr">→</span></button>
+  </nav>
+  <div class="tools">
+    <button id="reset">Recoger piezas</button>
+    <button id="lupa" title="Modo lupa: un clic inspecciona la pieza">Lupa</button>
+  </div>
+  <div class="foot">© 2026 · Valladolid</div>
+</aside>
 <div id="hint">Arrastra y lanza las piezas · Doble clic o suéltala en la zona de inspección para ver su proyecto · Lupa: un clic basta</div>
 <div id="tip"></div>
 <div id="err" hidden></div>
 <div id="panel" hidden></div>
 
+<script>
+  /* Máquina de escribir: independiente de three.js para que el título salga aunque la escena tarde */
+  (function () {
+    var el = document.getElementById('typed'), word = 'ARTEFACTOS', i = 0;
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(function step() {
+      el.textContent = word.slice(0, ++i);
+      if (i < word.length) return setTimeout(step, 70 + Math.random() * 90);
+      window.__typedDone = true;
+      if (window.__onTyped) window.__onTyped();
+    }, reduced ? 100 : 2000);
+  })();
+</script>
 <!-- Librerías clásicas (sin módulos ni importmap) para que carguen en cualquier visor -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
@@ -88,6 +167,9 @@ var PROJECTS = {
   }
 };
 
+/* Pendiente: rellenar con los datos reales de contacto */
+var CONTACT = { email: null, linkedin: null };
+
 var PIECES = [
   { file: 'assets/broto_bandeja.json', project: 'broto', name: 'Bandeja recta',
     fn: 'Bandeja del sistema de autocultivo Broto.', util: null },
@@ -112,16 +194,21 @@ var canvas = renderer.domElement;
 var scene = new THREE.Scene();
 scene.background = new THREE.Color(0x15181a);
 var camera = new THREE.PerspectiveCamera(38, 1, 10, 6000);
-camera.position.set(-40, 1100, 620);
-camera.lookAt(-40, 0, 0);
+var CAM_BASE = new THREE.Vector3(0, 1100, 620), CAM_TARGET = new THREE.Vector3(-40, 0, 0);
 
 function resize() {
-  var w = window.innerWidth, h = window.innerHeight;
+  var w = stage.clientWidth || window.innerWidth, h = stage.clientHeight || window.innerHeight;
   renderer.setSize(w, h);
   camera.aspect = w / h;
+  // En pantallas estrechas se aleja la cámara para que la plancha quepa a lo ancho
+  var k = Math.max(1, 1.3 / camera.aspect);
+  camera.position.copy(CAM_BASE).multiplyScalar(k).add(CAM_TARGET);
+  camera.lookAt(CAM_TARGET);
   camera.updateProjectionMatrix();
+  if (window.innerWidth <= 700) document.body.style.setProperty('--head', document.getElementById('side').offsetHeight + 'px');
 }
 window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
 resize();
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x202428, 1.0));
@@ -232,13 +319,15 @@ function addPiece(def, geo) {
 
   var p = { def: def, mesh: mesh, mat: mat, edgeMat: edgeMat, body: body, size: size, mode: 'free', hover: false, anim: null };
   pieces.push(p);
-  spawn(p, pieces.length - 1);
+  if (dropped) spawn(p, pieces.length - 1);
+  else { mesh.visible = false; body.type = CANNON.Body.STATIC; body.updateMassProperties(); body.position.set(0, -2000, 0); }
 }
 
 function spawn(p, i) {
   p.body.type = CANNON.Body.DYNAMIC;
   p.body.updateMassProperties();
-  p.body.position.set(-60 + Math.random() * 380, 200 + i * 150, -150 + Math.random() * 300);
+  p.mesh.visible = true;
+  p.body.position.set(-200 + Math.random() * 400, 750 + i * 260, -120 + Math.random() * 240);
   p.body.quaternion.setFromEuler(Math.random() * 3, Math.random() * 3, Math.random() * 3);
   p.body.velocity.set(0, 0, 0);
   p.body.angularVelocity.set(0, 0, 0);
@@ -385,7 +474,70 @@ lupaBtn.addEventListener('click', function () {
 
 document.getElementById('reset').addEventListener('click', function () {
   if (current) closePanel();
+  if (!dropped) return drop();
   pieces.forEach(function (p, i) { spawn(p, i); });
+});
+
+/* ---------- Intro: título, máquina de escribir y caída ---------- */
+var dropped = false, introGone = false, dropT = 0;
+var intro = document.getElementById('intro');
+var typed = document.getElementById('typed');
+var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (window.__typedDone) setTimeout(drop, 700); else window.__onTyped = function () { setTimeout(drop, reduced ? 200 : 700); };
+function drop() {
+  if (dropped) return;
+  dropped = true; dropT = performance.now();
+  pieces.forEach(function (p, i) { spawn(p, i); });
+}
+function dissolveIntro() {
+  if (introGone) return;
+  introGone = true;
+  intro.classList.add('gone');
+  setTimeout(function () { document.body.classList.add('ready'); }, 500);
+}
+var projV = new THREE.Vector3();
+function checkIntroHit(now) {
+  if (!dropped || introGone) return;
+  if (now - dropT > 3000) return dissolveIntro();   // por si ninguna pieza lo cruza
+  var r = intro.querySelector('.name').getBoundingClientRect();
+  var c = canvas.getBoundingClientRect();
+  for (var i = 0; i < pieces.length; i++) {
+    projV.copy(pieces[i].mesh.position).project(camera);
+    var sx = c.left + (projV.x + 1) / 2 * c.width, sy = c.top + (1 - projV.y) / 2 * c.height;
+    if (sx > r.left - 60 && sx < r.right + 60 && sy > r.top && sy < r.bottom + 40) return dissolveIntro();
+  }
+}
+window.addEventListener('keydown', function (e) { if (e.key === 'Escape') { drop(); dissolveIntro(); } });
+
+/* ---------- Margen: proyectos y contacto ---------- */
+var listEl = document.getElementById('list');
+var contactEl = document.getElementById('contact');
+listEl.innerHTML = Object.keys(PROJECTS).map(function (k) {
+  return '<button data-p="' + k + '">' + PROJECTS[k].name + '<small>' + PROJECTS[k].tag + '</small></button>';
+}).join('');
+listEl.addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  var p = pieces.filter(function (q) { return q.def.project === b.dataset.p; })[0];
+  if (p) inspect(p);
+  document.getElementById('side').classList.remove('open');
+});
+document.getElementById('navList').addEventListener('click', function () {
+  listEl.hidden = !listEl.hidden; contactEl.hidden = true;
+});
+function contactHTML(subject) {
+  var mail = CONTACT.email
+    ? '<a href="mailto:' + CONTACT.email + (subject ? '?subject=' + encodeURIComponent(subject) : '') + '" style="color:var(--accent)">' + CONTACT.email + '</a>'
+    : '<span class="pend" style="color:var(--muted)">Email pendiente de añadir</span>';
+  var li = CONTACT.linkedin
+    ? '<br><a href="' + CONTACT.linkedin + '" target="_blank" rel="noopener" style="color:var(--accent)">LinkedIn</a>' : '';
+  return (subject ? 'Cuéntame qué proyecto te interesa y te envío documentación.<br>' : '') + mail + li;
+}
+document.getElementById('navContact').addEventListener('click', function () {
+  contactEl.innerHTML = contactHTML(null); contactEl.hidden = !contactEl.hidden || contactEl.dataset.k !== 'c'; contactEl.dataset.k = 'c'; listEl.hidden = true;
+});
+document.getElementById('navInfo').addEventListener('click', function () {
+  if (CONTACT.email) { location.href = 'mailto:' + CONTACT.email + '?subject=' + encodeURIComponent('Información sobre tus proyectos'); return; }
+  contactEl.innerHTML = contactHTML('Información'); contactEl.hidden = !contactEl.hidden || contactEl.dataset.k !== 'i'; contactEl.dataset.k = 'i'; listEl.hidden = true;
 });
 
 /* ---------- Inspección ---------- */
@@ -476,6 +628,7 @@ function frame(now) {
     var q = p.body.quaternion;
     p.mesh.quaternion.set(q.x, q.y, q.z, q.w);
   });
+  checkIntroHit(now);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
