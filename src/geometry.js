@@ -107,7 +107,8 @@ export function buildPiece(tris, opt) {
     let sharp = fs.length === 1;                         // borde abierto
     if (fs.length >= 2) {
       const p = fs[0] * 3, q = fs[1] * 3;
-      sharp = fn[p] * fn[q] + fn[p + 1] * fn[q + 1] + fn[p + 2] * fn[q + 2] < cos;
+      const dot = fn[p] * fn[q] + fn[p + 1] * fn[q + 1] + fn[p + 2] * fn[q + 2];
+      sharp = dot < cos && dot > -0.7;                  // casi 180°: triángulos plegados o invertidos, no una arista real
     }
     if (!sharp) return;
     const a = Math.floor(key / nV), b = key % nV, ra = find(a), rb = find(b);
@@ -152,8 +153,10 @@ export function buildPiece(tris, opt) {
 }
 
 /* ---------- Objeto de three.js listo para la escena ---------- */
-const WHITE = new THREE.MeshBasicMaterial({ color: 0xffffff, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-const BLACK = new THREE.MeshBasicMaterial({ color: 0x0a0a0a, side: THREE.BackSide });
+// doble cara: los STL con algún triángulo invertido no dejan huecos
+const WHITE = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+// el contorno se empuja hacia atrás en profundidad para que no asome a través de paredes finas
+const BLACK = new THREE.MeshBasicMaterial({ color: 0x0a0a0a, side: THREE.BackSide, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 900 });
 const DEPTH = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
 export const lineMaterial = new THREE.LineMaterial({ color: 0x0a0a0a, linewidth: 1.5 });
 

@@ -110,12 +110,18 @@ function applyGrab() {
   body.applyImpulseAtPoint({ x: ax * m * DT, y: 0, z: az * m * DT }, p, true);
 }
 
+const still = new Map();
 function clampSpeeds() {
   world.forEachActiveRigidBody(body => {
     if (!body.isDynamic()) return;
     const v = body.linvel(), s = Math.hypot(v.x, v.y, v.z);
     if (s > P.maxSpeed) body.setLinvel({ x: v.x * P.maxSpeed / s, y: v.y * P.maxSpeed / s, z: v.z * P.maxSpeed / s }, true);
     const w = body.angvel(), a = Math.hypot(w.x, w.y, w.z);
+    // una pieza que apenas se mueve durante medio segundo se da por parada (evita vibraciones residuales)
+    const calm = s < 10 && a < 0.2 && !(grab && grab.b.body.handle === body.handle);
+    const n = calm ? (still.get(body.handle) || 0) + 1 : 0;
+    still.set(body.handle, n);
+    if (n > 60) { body.sleep(); return; }
     if (a > P.maxSpin) body.setAngvel({ x: w.x * P.maxSpin / a, y: w.y * P.maxSpin / a, z: w.z * P.maxSpin / a }, true);
   });
 }

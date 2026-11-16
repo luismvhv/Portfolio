@@ -429,7 +429,7 @@ window.addEventListener('keydown', e => {
 /* =====================================================================
    Bucle
    ===================================================================== */
-let last = performance.now();
+let last = performance.now(), lastKey = '', idleFrames = 0;
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -448,15 +448,21 @@ function frame(now) {
   if (drag && drag.type === 'piece') { const c = cursorAt({ x: drag.lx, y: drag.ly }, drag.y); phys.moveGrab(c.x, c.z); }
 
   phys.stepPhysics(dt);
+  let moving = !!travel || !introGone;
   for (const p of pieces) {
     if (p.mode === 'wait') continue;
+    if (!p.phys.body.isSleeping()) moving = true;
     const t = p.phys.body.translation(), q = p.phys.body.rotation();
     if (p.mode === 'free' && !(t.y > -60 && t.y < 3000)) { settle(p, p.spaceId === 'home' ? p.home : p.main ? spaces[p.spaceId].dock : p.home); continue; }   // seguro
     p.obj.position.set(t.x, t.y, t.z);
     p.obj.quaternion.set(q.x, q.y, q.z, q.w);
   }
   checkIntroHit(now);
-  renderer.render(scene, camera);
+  // en reposo (piezas dormidas y cámara quieta) no se vuelve a dibujar
+  const key = cam.x + '|' + cam.z + '|' + cam.s + '|' + vw + '|' + vh;
+  if (moving || key !== lastKey || idleFrames < 3) renderer.render(scene, camera);
+  idleFrames = moving || key !== lastKey ? 0 : idleFrames + 1;
+  lastKey = key;
   requestAnimationFrame(frame);
 }
 

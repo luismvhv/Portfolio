@@ -34,7 +34,7 @@ export const PROJECTS = [
     id: 'deco',
     title: 'DECO',
     subtitle: 'Cultivo modular de setas y plantas',
-    piece: { file: 'assets/deco_fog.json', name: 'Generador de niebla', edgeAngle: 55 },
+    piece: { file: 'assets/deco_fog.json', name: 'Generador de niebla', edgeAngle: 65, edgeMinLength: 0.12 },
     notes: [
       { title: 'La pieza', text: 'Generador de niebla de DECO por ultrasonidos.' },
       { title: 'Qué es', text: 'Sistema modular de cultivo doméstico: cubos de 250 mm que se apilan y conectan con imanes y pogo-pins.' },
@@ -65,19 +65,7 @@ export const PROJECTS = [
     ],
     extras: []
   }
-,
-  {
-    id: 'ejemplo',
-    title: 'Ejemplo',
-    subtitle: 'Proyecto de prueba',
-    piece: { file: 'assets/ejemplo_tuerca.stl', name: 'Tuerca' },
-    notes: [
-      { title: 'Qué es', text: 'Un proyecto de prueba añadido solo desde los datos.' },
-      { title: 'Datos', list: ['Un STL', 'Dos post-its', 'Una foto'] }
-    ],
-    photos: [{ src: null, caption: 'foto de prueba' }],
-    extras: []
-  }
+
 ];
 
 /* Espacio de contacto: igual que un proyecto, pero sin pieza. */
