@@ -241,13 +241,14 @@ function checkIntroHit(now) {
    Navegación: la pieza sale disparada y la cámara la persigue hasta su espacio.
    Los espacios están lejos de la mat principal y solo se llega a ellos así.
    ===================================================================== */
+const HINT_HOME = $('hint').textContent;
 const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const routeId = () => { const id = location.hash.replace(/^#\/?/, ''); return spaces[id] ? id : 'home'; };
 function focusOf(sp) {
   if (sp === home) return { x: 0, z: 0, s: sHome() };
   const fit = Math.min(vw / (sp.w + 100), vh / (sp.h + 100));
-  if (fit >= .72) return { x: sp.x, z: sp.z, s: Math.min(1.3, fit) };
-  const s = .72;                                                    // pantallas pequeñas: empieza por el título y la pieza
+  if (fit >= .55) return { x: sp.x, z: sp.z, s: Math.min(1.3, fit) };
+  const s = .62;                                                    // pantallas pequeñas: empieza por el título y la pieza
   return { x: sp.x - sp.w / 2 - 40 + vw / (2 * s), z: sp.z - sp.h / 2 - 40 + vh / (2 * s), s };
 }
 function go(id, fromRoute) {
@@ -291,6 +292,7 @@ function updateTravel(now) {
   travel = null;
   if (cur !== home) arrive(cur);
   $('home').classList.toggle('show', cur !== home);
+  $('hint').textContent = cur === home ? HINT_HOME : 'Arrastra para moverte · rueda o pellizco para acercarte · las piezas también se pueden agarrar aquí';
 }
 window.addEventListener('popstate', () => go(routeId(), true));
 window.addEventListener('hashchange', () => go(routeId(), true));

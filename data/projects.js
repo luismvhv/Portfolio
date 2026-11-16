@@ -65,6 +65,19 @@ export const PROJECTS = [
     ],
     extras: []
   }
+,
+  {
+    id: 'ejemplo',
+    title: 'Ejemplo',
+    subtitle: 'Proyecto de prueba',
+    piece: { file: 'assets/ejemplo_tuerca.stl', name: 'Tuerca' },
+    notes: [
+      { title: 'Qué es', text: 'Un proyecto de prueba añadido solo desde los datos.' },
+      { title: 'Datos', list: ['Un STL', 'Dos post-its', 'Una foto'] }
+    ],
+    photos: [{ src: null, caption: 'foto de prueba' }],
+    extras: []
+  }
 ];
 
 /* Espacio de contacto: igual que un proyecto, pero sin pieza. */
