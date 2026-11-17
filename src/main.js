@@ -17,16 +17,22 @@ function fail(msg) { const d = $('err'); d.hidden = false; d.textContent = msg; 
 /* =====================================================================
    Menú y textos del sitio
    ===================================================================== */
-document.body.classList.add('intro');
 if (isMobile()) document.body.classList.add('menu-closed');
-$('siteName').textContent = $('introName').textContent = SITE.name;
+$('siteName').textContent = SITE.name;
+$('introBy').textContent = 'by ' + SITE.name;
 $('siteTag').textContent = SITE.tagline;
 $('siteBio').textContent = SITE.bio;
 $('siteFoot').textContent = SITE.footer;
 $('list').innerHTML = PROJECTS.map((p, i) =>
   '<li><button data-go="' + p.id + '"><b>' + String(i + 1).padStart(2, '0') + '</b><span>' + p.title + '</span><small>' + (p.subtitle || '') + '</small></button></li>').join('');
+/* Preloader: ARTEFACTOS se teclea, debajo se escribe "by Luis Martínez" y se mantiene 3 s antes de la caída */
 let typed = false;
-window.typewriter($('typed'), SITE.tagline, { delay: reduced ? 100 : 2100, speed: reduced ? 20 : 95 }, () => { typed = true; maybeDrop(); });
+const HOLD = reduced ? 400 : 3000, BY_WRITE = reduced ? 0 : 1300;
+$('typed').nextElementSibling.classList.add('typing');
+window.typewriter($('typed'), SITE.tagline, { delay: reduced ? 100 : 500, speed: reduced ? 20 : 110 }, () => {
+  $('introBy').classList.add('write');
+  setTimeout(() => { typed = true; maybeDrop(); }, BY_WRITE + HOLD);
+});
 
 function setMenu(open) {
   document.body.classList.toggle('menu-closed', !open);
@@ -97,18 +103,29 @@ scene.add(shadowPlane);
 
 const cam = { x: 0, z: 0, s: 1 };            // centro de la vista (mm) y escala (px por mm)
 let vw = 0, vh = 0, travel = null, inertia = null;
-const sHome = () => Math.max(.5, Math.min(1.25, view.clientWidth / 1150, view.clientHeight / 760));
+/* Zoom de la mat principal: encuadra el grupo de piezas (homeBox) con algo de aire alrededor */
+let homeBox = null;
+const sHome = () => {
+  // tamaño que tendrá la vista con el menú en su sitio (durante el preloader ocupa toda la pantalla)
+  const side = !isMobile() && !document.body.classList.contains('menu-closed') ? $('side').offsetWidth : 0;
+  const w = window.innerWidth - side, h = view.clientHeight;
+  if (!homeBox) return Math.max(.5, Math.min(1.25, w / 1150, h / 760));
+  return Math.max(.6, Math.min(ZOOM_MAX * .8, w / (homeBox.w * 1.3 + 50), h / (homeBox.h * 1.3 + 50)));
+};
 cam.s = sHome();
 
+/* Zona visible de un espacio: su mat y, en los proyectos, la cabecera con el título encima */
+const area = sp => sp === home ? { x: 0, z: 0, w: sp.w, h: sp.h } : { x: sp.x, z: sp.z - sp.head / 2, w: sp.w, h: sp.h + sp.head };
 function sMin() {
-  if (cur === home) return Math.max(vw / cur.w, vh / cur.h);          // nunca se ve fuera de la mat principal
-  return Math.min(1, vw / (cur.w + 160), vh / (cur.h + 160));
+  const a = area(cur);
+  if (cur === home) return Math.max(vw / a.w, vh / a.h);          // nunca se ve fuera de la mat principal
+  return Math.min(1, vw / (a.w + 160), vh / (a.h + 160));
 }
 function clampCam() {
-  const pad = cur === home ? 0 : 80, hw = vw / (2 * cam.s), hh = vh / (2 * cam.s);
-  const mx = Math.max(0, cur.w / 2 + pad - hw), mz = Math.max(0, cur.h / 2 + pad - hh);
-  cam.x = Math.max(cur.x - mx, Math.min(cur.x + mx, cam.x));
-  cam.z = Math.max(cur.z - mz, Math.min(cur.z + mz, cam.z));
+  const a = area(cur), pad = cur === home ? 0 : 80, hw = vw / (2 * cam.s), hh = vh / (2 * cam.s);
+  const mx = Math.max(0, a.w / 2 + pad - hw), mz = Math.max(0, a.h / 2 + pad - hh);
+  cam.x = Math.max(a.x - mx, Math.min(a.x + mx, cam.x));
+  cam.z = Math.max(a.z - mz, Math.min(a.z + mz, cam.z));
 }
 function applyCamera() {
   const w = view.clientWidth, h = view.clientHeight;
@@ -176,16 +193,27 @@ async function loadPiece(d, i) {
 /* Sitio libre para cada pieza: espiral desde el centro hasta no solaparse con las ya colocadas */
 function assignHomes() {
   const placed = [];
+  // la espiral se estira según la forma de la pantalla: en vertical las piezas se apilan, en horizontal se reparten a lo ancho
+  const asp = Math.max(.6, Math.min(1.8, view.clientWidth / view.clientHeight)), sx = Math.sqrt(asp), sz = 1 / sx;
   pieces.filter(p => p.main).forEach(p => {
     let pos = p.opt.at ? { x: p.opt.at[0], z: p.opt.at[1] } : null;
     for (let k = 0; !pos && k < 4000; k++) {
-      const rad = 22 * Math.sqrt(k), a = k * 2.39996, x = Math.cos(a) * rad * 1.5, z = Math.sin(a) * rad;
+      const rad = 14 * Math.sqrt(k), a = k * 2.39996, x = Math.cos(a) * rad * sx, z = Math.sin(a) * rad * sz;
       if (Math.abs(x) > MAT.w / 2 - 150 || Math.abs(z) > MAT.h / 2 - 150) continue;
-      if (placed.every(q => Math.hypot(q.x - x, q.z - z) > q.r + p.radius + 45)) pos = { x, z };
+      if (placed.every(q => Math.hypot(q.x - x, q.z - z) > q.r + p.radius + 22)) pos = { x, z };
     }
     p.home = pos || { x: 0, z: 0 };
     placed.push({ x: p.home.x, z: p.home.z, r: p.radius });
   });
+  // centra el grupo en la mat y guarda su caja para el encuadre inicial
+  if (placed.length) {
+    const x0 = Math.min(...placed.map(q => q.x - q.r)), x1 = Math.max(...placed.map(q => q.x + q.r));
+    const z0 = Math.min(...placed.map(q => q.z - q.r)), z1 = Math.max(...placed.map(q => q.z + q.r));
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    pieces.filter(p => p.main && !p.opt.at).forEach(p => { p.home = { x: p.home.x - cx, z: p.home.z - cz }; });
+    homeBox = { w: x1 - x0, h: z1 - z0 };
+  }
+  cam.x = 0; cam.z = 0; cam.s = sHome();
   pieces.filter(p => !p.main).forEach(p => { p.home = spaces[p.project.id].extraSlots[p.slot]; });
 }
 const randQ = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random() * 6, Math.random() * 6, Math.random() * 6));
@@ -194,7 +222,7 @@ function drop(p, i, at) {
   p.obj.visible = true;
   p.mode = 'free';
   phys.place(p.phys, t.x, Math.min(dist * 0.5, 900) + i * 110, t.z, randQ());
-  phys.impulse(p.phys, { x: 0, y: -700, z: 0 }, { x: (Math.random() - .5) * 6, y: (Math.random() - .5) * 6, z: (Math.random() - .5) * 6 });
+  phys.impulse(p.phys, { x: 0, y: -700, z: 0 }, { x: (Math.random() - .5) * 3, y: (Math.random() - .5) * 3, z: (Math.random() - .5) * 3 });
 }
 function settle(p, at) {            // deja la pieza tumbada en un punto, sin caída
   p.obj.visible = true;
@@ -209,11 +237,9 @@ let dropped = false, introGone = false, dropT = 0;
 function maybeDrop() {
   if (dropped || !typed || !loadedAll) return;
   dropped = true;
-  setTimeout(() => {
-    dropT = performance.now();
-    pieces.filter(p => p.main).forEach((p, i) => drop(p, i));
-    pieces.filter(p => !p.main).forEach(p => settle(p, p.home));
-  }, 450);
+  dropT = performance.now();
+  pieces.filter(p => p.main).forEach((p, i) => drop(p, i));
+  pieces.filter(p => !p.main).forEach(p => settle(p, p.home));
 }
 function dissolveIntro() {
   if (introGone) return;
@@ -229,7 +255,7 @@ function dissolveIntro() {
 function checkIntroHit(now) {
   if (!dropT || introGone) return;
   if (now - dropT > 2600) return dissolveIntro();
-  const r = intro.querySelector('.name').getBoundingClientRect(), v = view.getBoundingClientRect();
+  const r = intro.querySelector('.title').getBoundingClientRect(), v = view.getBoundingClientRect();
   for (const p of pieces) {
     if (!p.main || p.obj.position.y > 260) continue;      // se desvanece cuando una pieza lo atraviesa al aterrizar
     const s = worldToScreen(p.obj.position.x, p.obj.position.z);
@@ -246,10 +272,10 @@ const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 const routeId = () => { const id = location.hash.replace(/^#\/?/, ''); return spaces[id] ? id : 'home'; };
 function focusOf(sp) {
   if (sp === home) return { x: 0, z: 0, s: sHome() };
-  const fit = Math.min(vw / (sp.w + 100), vh / (sp.h + 100));
-  if (fit >= .55) return { x: sp.x, z: sp.z, s: Math.min(1.3, fit) };
+  const a = area(sp), fit = Math.min(vw / (a.w + 100), vh / (a.h + 100));
+  if (fit >= .55) return { x: a.x, z: a.z, s: Math.min(1.3, fit) };
   const s = .62;                                                    // pantallas pequeñas: empieza por el título y la pieza
-  return { x: sp.x - sp.w / 2 - 40 + vw / (2 * s), z: sp.z - sp.h / 2 - 40 + vh / (2 * s), s };
+  return { x: a.x - a.w / 2 - 40 + vw / (2 * s), z: a.z - a.h / 2 - 40 + vh / (2 * s), s };
 }
 function go(id, fromRoute) {
   const to = spaces[id];

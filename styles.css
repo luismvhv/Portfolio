@@ -33,13 +33,12 @@ body.intro #view,body.menu-closed #view{left:0}
 .mat-num{font-family:var(--small);font-size:12px;font-weight:700;fill:#fff}
 
 /* ---------- Texto sobre la mat ---------- */
-.ztitle{position:absolute;color:#fff;margin:0}
+.ztitle{position:absolute;color:#fff;margin:0;white-space:nowrap}
 .ztitle h2{font-family:var(--big);font-weight:400;font-size:78px;line-height:1;margin:0;white-space:nowrap}
 .ztitle p{font-family:var(--small);font-size:15px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:8px 0 0}
 .back{font-family:var(--hand);font-size:16px;line-height:1;color:#fff;background:none;border:2.5px solid #fff;white-space:nowrap;
       border-radius:50% 46% 52% 48%/60% 55% 45% 50%;padding:13px 20px 7px;transform:rotate(-3deg)}
 .back:hover{background:rgba(255,255,255,.16)}
-.content .back{position:absolute}
 .dock{position:absolute;border:3px dashed #fff;border-radius:14px;box-sizing:border-box}
 .dock span{position:absolute;left:8px;top:-26px;font-family:var(--small);font-weight:700;font-size:13px;letter-spacing:.1em;color:#fff;text-transform:uppercase;white-space:nowrap}
 
@@ -81,9 +80,9 @@ body.intro #view,body.menu-closed #view{left:0}
        background:radial-gradient(ellipse 46% 34% at 50% 50%,rgba(11,43,38,.6),rgba(11,43,38,0));
        transition:opacity 1s ease,filter 1s ease,transform 1s ease}
 #intro.gone{opacity:0;filter:blur(16px);transform:scale(1.06)}
-#intro .name{font-family:var(--hand);font-size:clamp(40px,7vw,104px);line-height:1.4;padding:.15em .3em .45em;
-             clip-path:inset(0 100% 0 0);animation:write 1.7s cubic-bezier(.55,.1,.35,1) .35s forwards}
-#intro .sub{font-family:var(--big);font-size:clamp(30px,4.6vw,66px);letter-spacing:.16em;line-height:1;margin-top:-.15em;min-height:1em;white-space:nowrap}
+#intro .title{font-family:var(--big);font-size:clamp(44px,9vw,128px);letter-spacing:.12em;line-height:1;min-height:1em;white-space:nowrap;padding-left:.12em}
+#intro .by{font-family:var(--hand);font-size:clamp(20px,3vw,40px);line-height:1.5;margin-top:.5em;padding:.1em .3em .4em;clip-path:inset(0 100% 0 0)}
+#intro .by.write{animation:write 1.3s cubic-bezier(.55,.1,.35,1) forwards}
 #intro .load{position:absolute;right:22px;bottom:18px;font-family:var(--small);font-weight:700;font-size:13px;letter-spacing:.1em}
 .tw-cursor{display:inline-block;width:.08em;height:.95em;margin-left:.06em;vertical-align:-.08em;background:currentColor;animation:blink 1s steps(1) infinite}
 .tw-cursor.typing{animation:none}
