@@ -8,7 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Manuscrita (Homemade Apple, provisional) + máquina de escribir (Special Elite para textos grandes, Courier Prime para pequeños) -->
 <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&family=Special+Elite&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<!-- VERSION (2026-11-17b): al publicar cambios, sustitúyela en todo este archivo (styles.css, importmap y main.js) para que los navegadores no mezclen archivos viejos y nuevos -->
+<link rel="stylesheet" href="styles.css?v=2026-11-17b">
 </head>
 <body class="intro">
 <aside id="side" aria-label="Menú">
@@ -73,6 +74,17 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegmentsGeometry.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineMaterial.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/lines/LineSegments2.js"></script>
-<script type="module" src="src/main.js"></script>
+<script type="importmap">
+{ "imports": {
+  "./src/main.js": "./src/main.js?v=2026-11-17b",
+  "./src/config.js": "./src/config.js?v=2026-11-17b",
+  "./src/mat.js": "./src/mat.js?v=2026-11-17b",
+  "./src/spaces.js": "./src/spaces.js?v=2026-11-17b",
+  "./src/geometry.js": "./src/geometry.js?v=2026-11-17b",
+  "./src/physics.js": "./src/physics.js?v=2026-11-17b",
+  "./data/projects.js": "./data/projects.js?v=2026-11-17b"
+} }
+</script>
+<script type="module" src="src/main.js?v=2026-11-17b"></script>
 </body>
 </html>
