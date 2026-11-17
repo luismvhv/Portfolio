@@ -12,9 +12,11 @@ export async function initPhysics() {
   world.lengthUnit = 1000;                      // trabajamos en milímetros: 1000 unidades por metro
   world.timestep = DT;
   world.numSolverIterations = P.solverIterations;
-  // Suelo: un bloque enorme cuya cara superior es el plano de la mat
-  const floor = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -500, 0));
-  world.createCollider(RAPIER.ColliderDesc.cuboid(1e6, 500, 1e6).setFriction(P.friction).setRestitution(P.restitution), floor);
+  world.integrationParameters.numAdditionalFrictionIterations = 4;
+  // Suelo: bloque cuya cara superior es el plano y = 0. Cubre todas las mats sin medidas desorbitadas
+  // (un bloque gigante pierde precisión en los contactos y hace vibrar las piezas).
+  const floor = world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, -100, 0));
+  world.createCollider(RAPIER.ColliderDesc.cuboid(16000, 100, 16000).setFriction(P.friction).setRestitution(P.restitution), floor);
   ray = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
 }
 
@@ -98,10 +100,11 @@ export function grabAnchor() {
 function applyGrab() {
   const body = grab.b.body, t = body.translation(), com = body.worldCom(), v = body.linvel(), w = body.angvel();
   const o = rot(body.rotation(), grab.local);
-  // el punto de aplicación se proyecta a la altura del centro de masas: la pieza pivota sobre la mat sin volcar
-  const p = { x: t.x + o.x, y: com.y, z: t.z + o.z };
-  const rx = p.x - com.x, rz = p.z - com.z;
-  const vpx = v.x + w.y * rz, vpz = v.z - w.y * rx;                 // velocidad del punto (v + ω × r)
+  // La fuerza se aplica en el punto real agarrado. Si está alto, el rozamiento con la mat crea un par
+  // que vuelca la pieza en la dirección del arrastre; si está a media altura, la pieza pivota y se desliza.
+  const p = { x: t.x + o.x, y: t.y + o.y, z: t.z + o.z };
+  const rx = p.x - com.x, ry = p.y - com.y, rz = p.z - com.z;
+  const vpx = v.x + w.y * rz - w.z * ry, vpz = v.z + w.x * ry - w.y * rx;   // velocidad del punto (v + ω × r)
   const om = 2 * Math.PI * P.grabFrequency, k = om * om, c = 2 * P.grabDamping * om;
   let ax = k * (grab.tx - p.x) - c * vpx, az = k * (grab.tz - p.z) - c * vpz;
   const a = Math.hypot(ax, az);
@@ -110,18 +113,36 @@ function applyGrab() {
   body.applyImpulseAtPoint({ x: ax * m * DT, y: 0, z: az * m * DT }, p, true);
 }
 
-const still = new Map();
+const still = new Map(), snap = new Map();
 function clampSpeeds() {
   world.forEachActiveRigidBody(body => {
     if (!body.isDynamic()) return;
     const v = body.linvel(), s = Math.hypot(v.x, v.y, v.z);
     if (s > P.maxSpeed) body.setLinvel({ x: v.x * P.maxSpeed / s, y: v.y * P.maxSpeed / s, z: v.z * P.maxSpeed / s }, true);
     const w = body.angvel(), a = Math.hypot(w.x, w.y, w.z);
-    // una pieza que apenas se mueve durante medio segundo se da por parada (evita vibraciones residuales)
-    const calm = s < 10 && a < 0.2 && !(grab && grab.b.body.handle === body.handle);
+    const held = grab && grab.b.body.handle === body.handle;
+    // Reposo: un movimiento muy lento (balanceo, vibración de contacto) se frena con fuerza y la pieza se duerme;
+    // el movimiento real (lanzar, empujar, rodar) está muy por encima de estos umbrales y no se ve afectado.
+    if (!held && s < P.restSpeed && a < P.restSpin) {
+      const f = P.restDamping;
+      body.setLinvel({ x: v.x * f, y: v.y < 0 ? v.y : v.y * f, z: v.z * f }, false);
+      body.setAngvel({ x: w.x * f, y: w.y * f, z: w.z * f }, false);
+    }
+    const calm = !held && s < P.restSpeed * .5 && a < P.restSpin * .5;
     const n = calm ? (still.get(body.handle) || 0) + 1 : 0;
     still.set(body.handle, n);
-    if (n > 60) { body.sleep(); return; }
+    if (n > P.restFrames) { body.sleep(); still.set(body.handle, 0); snap.delete(body.handle); return; }
+    // Vibración: la velocidad puede tener picos pero la pieza no llega a ninguna parte.
+    // Cada ventana de restWindow pasos se compara posición y giro; si apenas han cambiado, se duerme.
+    if (held) { snap.delete(body.handle); return; }
+    const t = body.translation(), q = body.rotation(), o = snap.get(body.handle);
+    if (!o) { snap.set(body.handle, { t: { x: t.x, y: t.y, z: t.z }, q: { x: q.x, y: q.y, z: q.z, w: q.w }, k: 0 }); }
+    else if (++o.k >= P.restWindow) {
+      const d = Math.hypot(t.x - o.t.x, t.y - o.t.y, t.z - o.t.z);
+      const ang = 2 * Math.acos(Math.min(1, Math.abs(q.x * o.q.x + q.y * o.q.y + q.z * o.q.z + q.w * o.q.w))) * 180 / Math.PI;
+      if (d < P.restDrift && ang < P.restDrift) { body.setLinvel({ x: 0, y: 0, z: 0 }, false); body.setAngvel({ x: 0, y: 0, z: 0 }, false); body.sleep(); snap.delete(body.handle); return; }
+      snap.set(body.handle, { t: { x: t.x, y: t.y, z: t.z }, q: { x: q.x, y: q.y, z: q.z, w: q.w }, k: 0 });
+    }
     if (a > P.maxSpin) body.setAngvel({ x: w.x * P.maxSpin / a, y: w.y * P.maxSpin / a, z: w.z * P.maxSpin / a }, true);
   });
 }

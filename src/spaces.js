@@ -46,8 +46,8 @@ export function createSpace(def, seed) {
   el.className = 'space';
   el.dataset.space = def.id;
   let h = '<div class="content">';
-  h += '<header class="ztitle" style="left:' + LEFT + 'px;top:' + TOP + 'px"><h2>' + esc(def.title) + '</h2><p>' + esc(def.subtitle || '') + '</p></header>';
-  h += '<button class="back" style="left:' + (LEFT + 6) + 'px">← volver a la mesa</button>';
+  // título y subtítulo fuera de la mat, justo encima de su borde superior
+  h += '<header class="ztitle"><h2>' + esc(def.title) + '</h2><p>' + esc(def.subtitle || '') + '</p></header>';
   if (def.piece) h += '<div class="dock"><span>Pieza · ' + esc(def.piece.name || '') + '</span></div>';
   (def.photos || []).forEach(p => { h += photoHTML(p, r); });
   (def.notes || []).forEach((n, i) => { h += noteHTML(n, i, r); });
@@ -58,15 +58,14 @@ export function createSpace(def, seed) {
 /* Coloca los elementos (hay que llamarla con el espacio visible y las tipografías cargadas) */
 export function layoutSpace(sp, origin) {
   const { el, def, r } = sp, G = MAT.grid;
-  const content = el.querySelector('.content'), title = el.querySelector('.ztitle'), back = el.querySelector('.back'), dock = el.querySelector('.dock');
+  const content = el.querySelector('.content'), title = el.querySelector('.ztitle'), dock = el.querySelector('.dock');
   const items = [...el.querySelectorAll('.item')];
   const defs = [...(def.photos || []), ...(def.notes || [])];
   const nExtra = (def.extras || []).length;
 
-  let y = TOP + title.offsetHeight + 18;
-  back.style.top = y + 'px';
-  y += back.offsetHeight + 60;
-  const benchTop = y;
+  const HEAD_GAP = 22, head = title.offsetHeight + HEAD_GAP;
+  title.style.cssText = 'left:8px;top:' + (-head) + 'px';
+  const benchTop = TOP + 34;
   const benchH = (def.piece ? DOCK.h + 40 : 0) + nExtra * 240;
 
   // Reparto en columnas: cada elemento va a la columna más corta
@@ -96,7 +95,7 @@ export function layoutSpace(sp, origin) {
   el.style.cssText = 'left:' + (origin.x - w / 2) + 'px;top:' + (origin.z - h / 2) + 'px;width:' + w + 'px;height:' + h + 'px';
   const toWorld = (x, yy) => ({ x: origin.x - w / 2 + x, z: origin.z - h / 2 + yy });
   Object.assign(sp, {
-    x: origin.x, z: origin.z, w, h,
+    x: origin.x, z: origin.z, w, h, head,
     dock: toWorld(dockC.x, dockC.y),
     extraSlots: Array.from({ length: nExtra }, (_, i) => toWorld(dockC.x, benchTop + DOCK.h + 40 + 120 + i * 240))
   });

@@ -86,6 +86,12 @@ Sin `at`, todo se coloca solo: las piezas buscan un hueco libre en espiral desde
 
 Abre la web, espera a que caigan las piezas y revisa: la pieza nueva en la mat, su entrada en el menú, doble clic → espacio → "volver a la mesa". Mira la pieza con el zoom al máximo: si se ven triángulos en curvas, sube `edgeAngle`.
 
+## Publicar cambios (caché)
+
+GitHub Pages deja que los navegadores guarden los archivos unos 10 minutos. Para que nadie mezcle un `index.html` nuevo con JavaScript viejo, todos los archivos de código se piden con una versión (`?v=…`) definida en `index.html`: en el enlace a `styles.css`, en el `importmap` y en el `<script>` de `src/main.js`.
+
+**Cada vez que se publique un cambio en `src/`, `data/` o `styles.css`, sustituye esa versión en todo `index.html`** (por ejemplo, la fecha y una letra: `2026-11-17b` → `2026-11-18a`).
+
 ## Estilo
 
 - Craft: mat, post-its y manuscrita (`--hand`). Tech: menú blanco puro con negro, líneas de borde a borde y máquina de escribir.

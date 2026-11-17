@@ -23,7 +23,13 @@ export const PHYSICS = {
   maxSpin: 28,                 // rad/s
   grabFrequency: 4.5,          // Hz del "muelle" que une el punto agarrado al cursor
   grabDamping: 0.75,
-  grabMaxAccel: 90000          // mm/s²: límite de fuerza para no atravesar otras piezas
+  grabMaxAccel: 90000,         // mm/s²: límite de fuerza para no atravesar otras piezas
+  restSpeed: 40,               // mm/s  ┐ por debajo de esto el movimiento se considera vibración de reposo
+  restSpin: 0.6,               // rad/s ┘
+  restDamping: 0.88,           // fracción de velocidad que se conserva en cada paso en reposo
+  restFrames: 30,              // pasos (1/120 s) en calma antes de dormir la pieza
+  restWindow: 30,              // pasos de la ventana para detectar vibración sin desplazamiento (0,25 s)
+  restDrift: 0.6               // mm y grados: si en esa ventana se mueve menos, la pieza se duerme
 };
 
 export const ZOOM_MAX = 2.6;
